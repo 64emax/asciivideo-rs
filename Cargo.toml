@@ -1,0 +1,9 @@
+[package]
+name = "asciivideo-rs"
+version = "0.6.7"
+edition = "2024"
+
+[dependencies]
+crossterm = "0.29.0"
+ffmpeg-next = "9.0.0"
+rodio = "0.23.0"
