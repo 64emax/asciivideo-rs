@@ -60,9 +60,14 @@ fn main() -> ExitCode {
     let water = rodio::Player::connect_new(&sink.mixer());
 
 
-    let frame_time = 1f64 / f64::from(the_video_stream.rate());
+    let seconds_per_frame = 1f64 / f64::from(the_video_stream.rate());
     let mut remember_color: u32 = 0;
     let mut skip = 0;
+    let mut video_frames_done = 0;
+    let mut video_done = false;
+    let mut audio_done = false;
+
+    let mut timer = Instant::now();
 
     for (stream, packet) in teto.packets() {
         if stream.index() == the_video_stream_index {
@@ -74,8 +79,6 @@ fn main() -> ExitCode {
                     skip -= 1;
                     continue;
                 }
-
-                let start = Instant::now();
 
                 let (outw, outh) = crossterm::terminal::size().expect("e");
                 let mut scaler = ffmpeg_next::software::scaling::context::Context::get(
@@ -117,10 +120,10 @@ fn main() -> ExitCode {
                     }
                 }
 
-                while start.elapsed().as_secs_f64() <= frame_time {};
-                let t = start.elapsed().as_secs_f64();
-                skip = (t / frame_time) as i32 - 1;
+                video_frames_done += 1;
             }
+            
+            video_done = true;
         }
         else
         if stream.index() == the_audio_stream_index {
@@ -156,6 +159,20 @@ fn main() -> ExitCode {
                     chunk
                 ));
             }
+
+            audio_done = true;
+        }
+        
+        if video_done && audio_done {
+            while timer.elapsed().as_secs_f64() < (seconds_per_frame * video_frames_done as f64) {};
+            let t = timer.elapsed().as_secs_f64();
+            skip = (t / seconds_per_frame) as i32 - video_frames_done;
+
+            timer = Instant::now();
+            
+            video_frames_done = 0;
+            video_done = false;
+            audio_done = false;
         }
     }
     
